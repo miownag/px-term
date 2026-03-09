@@ -98,8 +98,8 @@ export async function cropAndEnlarge(
   const centerX = Math.round(relX * logW);
   const centerY = Math.round(relY * logH);
 
-  let left = Math.max(0, centerX - padding);
-  let top = Math.max(0, centerY - padding);
+  const left = Math.max(0, centerX - padding);
+  const top = Math.max(0, centerY - padding);
   let cropW = padding * 2;
   let cropH = padding * 2;
 

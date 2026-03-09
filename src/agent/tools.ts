@@ -71,7 +71,18 @@ export const doneTool = tool(
   },
 );
 
+export const screenshotTool = tool(
+  (_input) => JSON.stringify({ type: 'screenshot' }),
+  {
+    name: 'screenshot',
+    description:
+      'Capture the current screen. Call this when you need to see what is on the screen before acting.',
+    schema: z.object({}),
+  },
+);
+
 export const allTools = [
+  screenshotTool,
   clickTool,
   typeTool,
   scrollTool,

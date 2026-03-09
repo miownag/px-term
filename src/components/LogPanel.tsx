@@ -1,5 +1,5 @@
-import { Box, Text } from "ink";
-import type { LogEntry } from "../types.js";
+import { Box, Text } from 'ink';
+import type { LogEntry } from '../types.js';
 
 interface LogPanelProps {
   logs: LogEntry[];
@@ -16,22 +16,38 @@ export function LogPanel({ logs, maxVisible = 8 }: LogPanelProps) {
       <Text bold dimColor>
         ─── Logs ───
       </Text>
-      {visible.map((log, i) => (
-        <Box key={`${log.step}-${i}`}>
-          <Text color={log.success ? "green" : "red"}>
-            {log.success ? "✓" : "✗"}
-          </Text>
-          <Text dimColor> [{log.step.toString().padStart(2)}] </Text>
-          <Text color="cyan">{log.action.padEnd(10)} </Text>
-          <Text>{log.detail}</Text>
-          {log.zoom && (
-            <Text dimColor>
-              {" "}
-              (zoom: {log.zoom.x.toFixed(2)},{log.zoom.y.toFixed(2)})
+      {visible.map((log, i) => {
+        if (log.action === 'message') {
+          return (
+            <Box key={`${log.step}-${i}`} flexDirection="column">
+              <Text color="white" dimColor>
+                {'  '}[{log.step.toString().padStart(2)}] Assistant:
+              </Text>
+              <Text wrap="wrap">
+                {'  '}
+                {log.detail}
+              </Text>
+            </Box>
+          );
+        }
+
+        return (
+          <Box key={`${log.step}-${i}`}>
+            <Text color={log.success ? 'green' : 'red'}>
+              {log.success ? '✓' : '✗'}
             </Text>
-          )}
-        </Box>
-      ))}
+            <Text dimColor> [{log.step.toString().padStart(2)}] </Text>
+            <Text color="cyan">{log.action.padEnd(10)} </Text>
+            <Text>{log.detail}</Text>
+            {log.zoom && (
+              <Text dimColor>
+                {' '}
+                (zoom: {log.zoom.x.toFixed(2)},{log.zoom.y.toFixed(2)})
+              </Text>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

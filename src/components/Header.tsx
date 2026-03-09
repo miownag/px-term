@@ -1,5 +1,5 @@
-import { Box, Text } from "ink";
-import type { DriverType, ScreenInfo } from "../types.js";
+import { Box, Text } from 'ink';
+import type { DriverType, ScreenInfo } from '../types.js';
 
 interface HeaderProps {
   modelName: string;
@@ -15,7 +15,7 @@ export function Header({ modelName, screenInfo, driverType }: HeaderProps) {
       flexDirection="row"
       justifyContent="space-between"
     >
-      <Text bold color="cyan">
+      <Text bold color="cyanBright">
         PxTerm
       </Text>
       <Text>
@@ -23,14 +23,14 @@ export function Header({ modelName, screenInfo, driverType }: HeaderProps) {
       </Text>
       {screenInfo && (
         <Text>
-          Screen: {screenInfo.logicalWidth}×{screenInfo.logicalHeight}{" "}
+          Screen: {screenInfo.logicalWidth}×{screenInfo.logicalHeight}{' '}
           <Text dimColor>(@{screenInfo.scaleFactor}x)</Text>
         </Text>
       )}
       {driverType && (
         <Text>
-          Driver:{" "}
-          <Text color={driverType === "robotjs" ? "green" : "yellow"}>
+          Driver:{' '}
+          <Text color={driverType === 'robotjs' ? 'green' : 'yellow'}>
             {driverType}
           </Text>
         </Text>

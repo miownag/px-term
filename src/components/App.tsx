@@ -1,20 +1,20 @@
-import { Box, useApp, useInput } from "ink";
-import { useCallback, useRef, useState } from "react";
-import { Agent } from "../agent/agent.js";
-import useFullHeight from "../hooks/use-full-height.js";
-import useResponsiveWidth from "../hooks/use-width.js";
+import { Box, useApp, useInput } from 'ink';
+import { useCallback, useRef, useState } from 'react';
+import { Agent } from '../agent/agent.js';
+import useFullHeight from '../hooks/use-full-height.js';
+import useResponsiveWidth from '../hooks/use-width.js';
 import type {
   AgentState,
   AppConfig,
   DriverType,
   LogEntry,
   ScreenInfo,
-} from "../types.js";
-import { Header } from "./Header.js";
-import { InputBar } from "./InputBar.js";
-import { LogPanel } from "./LogPanel.js";
-import { QuestionPanel } from "./QuestionPanel.js";
-import { TaskPanel } from "./TaskPanel.js";
+} from '../types.js';
+import { Header } from './Header.js';
+import { InputBar } from './InputBar.js';
+import { LogPanel } from './LogPanel.js';
+import { QuestionPanel } from './QuestionPanel.js';
+import { TaskPanel } from './TaskPanel.js';
 
 interface AppProps {
   config: AppConfig;
@@ -26,7 +26,7 @@ export function App({ config }: AppProps) {
   const responsiveWidth = useResponsiveWidth();
   const rows = useFullHeight();
 
-  const [agentState, setAgentState] = useState<AgentState>("idle");
+  const [agentState, setAgentState] = useState<AgentState>('idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [currentTask, setCurrentTask] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -40,20 +40,14 @@ export function App({ config }: AppProps) {
   const agentRef = useRef<Agent | null>(null);
   const questionResolverRef = useRef<((answer: string) => void) | null>(null);
 
-  const modelName = config.anthropicModel || config.openaiModel || "unknown";
+  const modelName = config.anthropicModel || config.openaiModel || 'unknown';
 
   const handleSubmit = useCallback(
     async (input: string) => {
-      if (input.toLowerCase() === "exit") {
-        if (agentRef.current) agentRef.current.abort();
-        exit();
-        return;
-      }
-
       if (
-        agentState !== "idle" &&
-        agentState !== "done" &&
-        agentState !== "error"
+        agentState !== 'idle' &&
+        agentState !== 'done' &&
+        agentState !== 'error'
       ) {
         return;
       }
@@ -61,7 +55,7 @@ export function App({ config }: AppProps) {
       setCurrentTask(input);
       setLogs([]);
       setCurrentStep(0);
-      setAgentState("capturing");
+      setAgentState('thinking');
 
       const agent = new Agent(config);
       agentRef.current = agent;
@@ -79,16 +73,19 @@ export function App({ config }: AppProps) {
               setQuestion({ text: q, options: opts });
             });
           },
+          onMessage: (_text) => {
+            // Message is displayed via onLog with action='message'
+          },
           onComplete: (_summary) => {
-            setAgentState("done");
+            setAgentState('done');
           },
           onError: (err) => {
-            setAgentState("error");
+            setAgentState('error');
             setLogs((prev) => [
               ...prev,
               {
                 step: 0,
-                action: "error",
+                action: 'error',
                 detail: err,
                 success: false,
               },
@@ -96,19 +93,19 @@ export function App({ config }: AppProps) {
           },
         });
       } catch (err) {
-        setAgentState("error");
+        setAgentState('error');
         setLogs((prev) => [
           ...prev,
           {
             step: 0,
-            action: "error",
+            action: 'error',
             detail: String(err),
             success: false,
           },
         ]);
       }
     },
-    [agentState, config, exit],
+    [agentState, config],
   );
 
   const handleAnswer = useCallback((answer: string) => {
@@ -121,14 +118,14 @@ export function App({ config }: AppProps) {
 
   // Ctrl+C to abort
   useInput((_input, key) => {
-    if (key.ctrl && _input === "c") {
+    if (key.ctrl && _input === 'c') {
       if (agentRef.current) agentRef.current.abort();
       exit();
     }
   });
 
   const isRunning =
-    agentState !== "idle" && agentState !== "done" && agentState !== "error";
+    agentState !== 'idle' && agentState !== 'done' && agentState !== 'error';
 
   return (
     <Box flexDirection="column" minHeight={rows} width={responsiveWidth}>

@@ -4,6 +4,7 @@ export type AgentState =
   | 'idle'
   | 'capturing'
   | 'thinking'
+  | 'responding'
   | 'zooming'
   | 'executing'
   | 'waiting_answer'
@@ -39,12 +40,17 @@ export interface DoneAction {
   summary: string;
 }
 
+export interface ScreenshotAction {
+  type: 'screenshot';
+}
+
 export type AgentAction =
   | ClickAction
   | TypeAction
   | ScrollAction
   | AskQuestionAction
-  | DoneAction;
+  | DoneAction
+  | ScreenshotAction;
 
 export interface ScreenInfo {
   physicalWidth: number;
@@ -100,6 +106,7 @@ export interface AgentCallbacks {
   onLog: (entry: LogEntry) => void;
   onStepUpdate: (step: number) => void;
   onAskQuestion: (question: string, options?: string[]) => Promise<string>;
+  onMessage: (text: string) => void;
   onComplete: (summary: string) => void;
   onError: (error: string) => void;
   onScreenInfo: (info: ScreenInfo) => void;

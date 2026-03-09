@@ -15,14 +15,18 @@ export function createVlmModel(config: AppConfig): ChatOpenAI | ChatAnthropic {
   }
 
   // Otherwise use OpenAI (also covers OpenAI-compatible third-party APIs)
+  // Use a placeholder key for local models that don't require authentication
+  // Enable __includeRawResponse so we can extract reasoning_content from
+  // providers like DeepSeek that return it in the chat completions response.
   return new ChatOpenAI({
-    openAIApiKey: config.openaiApiKey,
+    openAIApiKey: config.openaiApiKey || 'sk-placeholder',
     model: config.openaiModel || 'gpt-4o',
     maxTokens: 1024,
+    __includeRawResponse: true,
     configuration: config.openaiBaseUrl
       ? { baseURL: config.openaiBaseUrl }
       : undefined,
-  });
+  } as ConstructorParameters<typeof ChatOpenAI>[0]);
 }
 
 export function buildImageMessage(

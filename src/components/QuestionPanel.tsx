@@ -1,7 +1,7 @@
-import { Box, Text } from "ink";
-import SelectInput from "ink-select-input";
-import TextInput from "ink-text-input";
-import { useState } from "react";
+import { Box, Text } from 'ink';
+import SelectInput from 'ink-select-input';
+import TextInput from 'ink-text-input';
+import { useState } from 'react';
 
 interface QuestionPanelProps {
   question: string;
@@ -14,7 +14,7 @@ export function QuestionPanel({
   options,
   onAnswer,
 }: QuestionPanelProps) {
-  const [textValue, setTextValue] = useState("");
+  const [textValue, setTextValue] = useState('');
 
   if (options && options.length > 0) {
     const items = options.map((opt) => ({ label: opt, value: opt }));
@@ -34,7 +34,7 @@ export function QuestionPanel({
         ? {question}
       </Text>
       <Box>
-        <Text color="green">{">"} </Text>
+        <Text color="green">{'>'} </Text>
         <TextInput
           value={textValue}
           onChange={setTextValue}
