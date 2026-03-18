@@ -6,11 +6,20 @@ import type {
   ZoomResult,
 } from '../types.js';
 
+interface GridLabelRange {
+  /** Full-screen relative coordinate of the left/top edge of the crop (0-1) */
+  startRel: number;
+  /** Full-screen relative coordinate of the right/bottom edge of the crop (0-1) */
+  endRel: number;
+}
+
 function generateGridSvg(
   width: number,
   height: number,
   cols = 10,
   rows = 8,
+  xRange?: GridLabelRange,
+  yRange?: GridLabelRange,
 ): Buffer {
   const cellW = width / cols;
   const cellH = height / rows;
@@ -26,6 +35,34 @@ function generateGridSvg(
     const y = Math.round(cellH * i);
     lines.push(
       `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="rgba(255,0,0,0.25)" stroke-width="1"/>`,
+    );
+  }
+
+  // Column labels at the top of each column
+  for (let i = 0; i < cols; i++) {
+    const x = Math.round(cellW * i + cellW / 2);
+    const label = xRange
+      ? (
+          xRange.startRel +
+          ((i + 0.5) / cols) * (xRange.endRel - xRange.startRel)
+        ).toFixed(2)
+      : String(i);
+    lines.push(
+      `<text x="${x}" y="14" text-anchor="middle" font-family="monospace" font-size="12" fill="rgba(255,0,0,0.5)">${label}</text>`,
+    );
+  }
+
+  // Row labels on the left of each row
+  for (let i = 0; i < rows; i++) {
+    const y = Math.round(cellH * i + cellH / 2 + 4);
+    const label = yRange
+      ? (
+          yRange.startRel +
+          ((i + 0.5) / rows) * (yRange.endRel - yRange.startRel)
+        ).toFixed(2)
+      : String(i);
+    lines.push(
+      `<text x="${xRange ? 18 : 6}" y="${y}" text-anchor="middle" font-family="monospace" font-size="12" fill="rgba(255,0,0,0.5)">${label}</text>`,
     );
   }
 
@@ -65,8 +102,7 @@ export async function processScreenshot(
     { input: gridSvg, top: 0, left: 0 },
   ]);
 
-  // Compress as JPEG
-  const outBuf = await img.jpeg({ quality: 80 }).toBuffer();
+  const outBuf = await img.png().toBuffer();
 
   return {
     buffer: outBuf,
@@ -128,13 +164,21 @@ export async function cropAndEnlarge(
   });
   img = sharp(await img.toBuffer()).resize(outW, outH);
 
-  // Overlay grid
-  const gridSvg = generateGridSvg(outW, outH);
+  // Overlay grid with absolute screen coordinate labels
+  const xRange: GridLabelRange = {
+    startRel: left / logW,
+    endRel: (left + cropW) / logW,
+  };
+  const yRange: GridLabelRange = {
+    startRel: top / logH,
+    endRel: (top + cropH) / logH,
+  };
+  const gridSvg = generateGridSvg(outW, outH, 10, 8, xRange, yRange);
   img = sharp(await img.toBuffer()).composite([
     { input: gridSvg, top: 0, left: 0 },
   ]);
 
-  const outBuf = await img.jpeg({ quality: 80 }).toBuffer();
+  const outBuf = await img.png().toBuffer();
 
   return {
     image: {
@@ -144,20 +188,5 @@ export async function cropAndEnlarge(
       displayHeight: outH,
     },
     cropBounds,
-  };
-}
-
-export function mapZoomToFullScreen(
-  zoomRelX: number,
-  zoomRelY: number,
-  cropBounds: CropBounds,
-  logicalWidth: number,
-  logicalHeight: number,
-): { relX: number; relY: number } {
-  const absX = cropBounds.left + zoomRelX * cropBounds.width;
-  const absY = cropBounds.top + zoomRelY * cropBounds.height;
-  return {
-    relX: absX / logicalWidth,
-    relY: absY / logicalHeight,
   };
 }

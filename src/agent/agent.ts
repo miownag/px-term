@@ -1,10 +1,9 @@
-import { type AIMessage, ToolMessage } from '@langchain/core/messages';
+import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { AIMessage } from '@langchain/core/messages';
 import { createExecutor, relativeToAbsolute } from '../system/executor.js';
-import {
-  cropAndEnlarge,
-  mapZoomToFullScreen,
-  processScreenshot,
-} from '../system/image.js';
+import { cropAndEnlarge, processScreenshot } from '../system/image.js';
 import { captureScreen, detectScreenInfo } from '../system/screenshot.js';
 import type {
   AgentAction,
@@ -13,7 +12,7 @@ import type {
   ScreenInfo,
 } from '../types.js';
 import { ConversationMemory } from './memory.js';
-import { allTools } from './tools.js';
+import { allTools, zoominCaptureTool } from './tools.js';
 import { createVlmModel, getSystemMessage } from './vlm.js';
 
 function sleep(ms: number): Promise<void> {
@@ -34,6 +33,32 @@ function parseToolCall(aiMsg: AIMessage): ParseResult | null {
   switch (call.name) {
     case 'screenshot':
       return { ok: true, action: { type: 'screenshot' } };
+    case 'zoomin_capture': {
+      const x = Number(args.x);
+      const y = Number(args.y);
+      if (
+        Number.isNaN(x) ||
+        Number.isNaN(y) ||
+        x < 0 ||
+        x > 1 ||
+        y < 0 ||
+        y > 1
+      ) {
+        return {
+          ok: false,
+          error: `Invalid zoomin_capture parameters: x=${JSON.stringify(args.x)}, y=${JSON.stringify(args.y)}. Both "x" and "y" must be numbers between 0 and 1.`,
+        };
+      }
+      return {
+        ok: true,
+        action: {
+          type: 'zoomin_capture',
+          x,
+          y,
+          padding: args.padding as number | undefined,
+        },
+      };
+    }
     case 'click': {
       const x = Number(args.x);
       const y = Number(args.y);
@@ -105,7 +130,7 @@ function parseToolCall(aiMsg: AIMessage): ParseResult | null {
     default:
       return {
         ok: false,
-        error: `Unknown tool "${call.name}". Available tools: screenshot, click, type, scroll, ask_question, done.`,
+        error: `Unknown tool "${call.name}". Available tools: screenshot, zoomin_capture, click, type, scroll, ask_question, done.`,
       };
   }
 }
@@ -139,6 +164,8 @@ export class Agent {
   private config: AppConfig;
   private memory: ConversationMemory;
   private aborted = false;
+  private imageDir = '';
+  private imageSeq = 0;
 
   constructor(config: AppConfig) {
     this.config = config;
@@ -149,9 +176,23 @@ export class Agent {
     this.aborted = true;
   }
 
+  private saveImage(label: string, base64: string): void {
+    const seq = String(this.imageSeq++).padStart(2, '0');
+    const filePath = join(this.imageDir, `${seq}-${label}.png`);
+    writeFileSync(filePath, Buffer.from(base64, 'base64'));
+  }
+
   async run(task: string, callbacks: AgentCallbacks): Promise<void> {
     this.aborted = false;
     this.memory.clear();
+
+    // Create per-conversation image directory
+    const uid = randomUUID().slice(0, 8);
+    this.imageDir = join(process.cwd(), 'img', uid);
+    this.imageSeq = 0;
+    if (!existsSync(this.imageDir)) {
+      mkdirSync(this.imageDir, { recursive: true });
+    }
 
     const executor = createExecutor();
     callbacks.onDriverType(executor.driverType);
@@ -167,14 +208,17 @@ export class Agent {
     }
 
     const model = createVlmModel(this.config);
-    const modelWithTools = model.bindTools!(allTools);
+    // Include zoomin_capture tool only when zoom is enabled
+    const tools = this.config.zoomEnabled
+      ? allTools
+      : allTools.filter((t) => t !== zoominCaptureTool);
+    const modelWithTools = model.bindTools!(tools);
 
     // Seed the conversation with the user's task
     this.memory.addHumanStep(`Task: ${task}`);
 
     for (let step = 1; step <= this.config.maxSteps; step++) {
       if (this.aborted) {
-        callbacks.onError('Aborted by user');
         return;
       }
 
@@ -182,7 +226,7 @@ export class Agent {
       callbacks.onStateChange('thinking');
 
       // Build messages from history and call VLM
-      const messages = this.memory.buildMessages(getSystemMessage(false));
+      const messages = this.memory.buildMessages(getSystemMessage());
 
       let aiMsg: AIMessage;
       try {
@@ -306,12 +350,91 @@ export class Agent {
         });
 
         // Record screenshot result as a ToolMessage with the image
+        this.saveImage('screenshot', processed.base64);
         this.memory.addToolResult(
           toolCallId,
           toolName,
           'Screenshot captured successfully.',
           processed.base64,
         );
+        continue;
+      }
+
+      // Handle ZOOMIN_CAPTURE
+      if (action.type === 'zoomin_capture') {
+        callbacks.onStateChange('zooming');
+        let screenshotBuf: Buffer;
+        try {
+          screenshotBuf = await captureScreen();
+        } catch (err) {
+          callbacks.onLog({
+            step,
+            action: 'capture',
+            detail: `Screenshot for zoom failed: ${err}`,
+            success: false,
+          });
+          this.memory.addToolResult(
+            toolCallId,
+            toolName,
+            `Screenshot for zoom failed: ${err}. Try again or use "screenshot" instead.`,
+          );
+          await sleep(this.config.actionDelay);
+          continue;
+        }
+
+        try {
+          // Override padding if the tool call provided one
+          const zoomConfig = action.padding
+            ? { ...this.config, zoomPadding: action.padding }
+            : this.config;
+          const zoomResult = await cropAndEnlarge(
+            screenshotBuf,
+            screenInfo,
+            zoomConfig,
+            action.x,
+            action.y,
+          );
+
+          const { cropBounds } = zoomResult;
+          const xStart = (cropBounds.left / screenInfo.logicalWidth).toFixed(3);
+          const xEnd = (
+            (cropBounds.left + cropBounds.width) /
+            screenInfo.logicalWidth
+          ).toFixed(3);
+          const yStart = (cropBounds.top / screenInfo.logicalHeight).toFixed(3);
+          const yEnd = (
+            (cropBounds.top + cropBounds.height) /
+            screenInfo.logicalHeight
+          ).toFixed(3);
+
+          callbacks.onLog({
+            step,
+            action: 'zoomin_capture',
+            detail: `Zoomed into (${action.x.toFixed(3)}, ${action.y.toFixed(3)})`,
+            success: true,
+            zoom: { x: action.x, y: action.y },
+          });
+
+          this.saveImage('zoom', zoomResult.image.base64);
+          this.memory.addToolResult(
+            toolCallId,
+            toolName,
+            `Zoomed-in capture around (${action.x.toFixed(3)}, ${action.y.toFixed(3)}). This crop covers full-screen region x: ${xStart}–${xEnd}, y: ${yStart}–${yEnd}. The grid labels on the image show absolute full-screen coordinates — use them directly for click/type/scroll.`,
+            zoomResult.image.base64,
+          );
+        } catch (err) {
+          callbacks.onLog({
+            step,
+            action: 'zoomin_capture',
+            detail: `Zoom processing failed: ${err}`,
+            success: false,
+          });
+          this.memory.addToolResult(
+            toolCallId,
+            toolName,
+            `Zoom processing failed: ${err}. Try "screenshot" instead.`,
+          );
+        }
         continue;
       }
 
@@ -338,128 +461,8 @@ export class Agent {
 
       // Handle GUI actions: click, type, scroll
       let actionDetail = '';
-      let actionImageBase64: string | undefined;
 
-      // Execute click with optional zoom
-      if (action.type === 'click' && this.config.zoomEnabled) {
-        callbacks.onStateChange('zooming');
-        // We need a fresh screenshot for zoom cropping
-        let screenshotBuf: Buffer;
-        try {
-          screenshotBuf = await captureScreen();
-        } catch {
-          // Fall through to non-zoom click
-          const abs = relativeToAbsolute(action.x, action.y, screenInfo);
-          callbacks.onStateChange('executing');
-          executor.click(abs.x, abs.y, action.button);
-          actionDetail = `Click (${action.x.toFixed(3)}, ${action.y.toFixed(3)}) → (${abs.x}, ${abs.y}) [no zoom: capture failed]`;
-          callbacks.onLog({
-            step,
-            action: 'click',
-            detail: actionDetail,
-            success: true,
-          });
-          this.memory.addToolResult(toolCallId, toolName, actionDetail);
-          await sleep(this.config.actionDelay);
-          continue;
-        }
-
-        try {
-          const zoomResult = await cropAndEnlarge(
-            screenshotBuf,
-            screenInfo,
-            this.config,
-            action.x,
-            action.y,
-          );
-
-          // Keep the zoom image to return as part of the click tool result
-          actionImageBase64 = zoomResult.image.base64;
-
-          // Second VLM call on zoomed image to get precise coordinates
-          const zoomMessages = this.memory.buildMessages(
-            getSystemMessage(true),
-          );
-          // Append text ToolMessage + HumanMessage with the zoom image
-          zoomMessages.push(
-            new ToolMessage({
-              content:
-                'This is a zoomed-in view of the area you clicked. Please provide more precise coordinates for your click within this cropped region.',
-              tool_call_id: toolCallId,
-              name: toolName,
-            }),
-          );
-          const { HumanMessage } = await import('@langchain/core/messages');
-          zoomMessages.push(
-            new HumanMessage({
-              content: [
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${zoomResult.image.base64}`,
-                  },
-                },
-              ],
-            }),
-          );
-
-          const zoomAiMsg = (await modelWithTools.invoke(
-            zoomMessages,
-          )) as AIMessage;
-          const zoomResult2 = parseToolCall(zoomAiMsg);
-          const zoomAction =
-            zoomResult2?.ok && zoomResult2.action.type === 'click'
-              ? zoomResult2.action
-              : null;
-
-          if (zoomAction) {
-            const mapped = mapZoomToFullScreen(
-              zoomAction.x,
-              zoomAction.y,
-              zoomResult.cropBounds,
-              screenInfo.logicalWidth,
-              screenInfo.logicalHeight,
-            );
-            const abs = relativeToAbsolute(
-              mapped.relX,
-              mapped.relY,
-              screenInfo,
-            );
-            callbacks.onStateChange('executing');
-            executor.click(abs.x, abs.y, zoomAction.button || action.button);
-            actionDetail = `Click (${mapped.relX.toFixed(3)}, ${mapped.relY.toFixed(3)}) → (${abs.x}, ${abs.y}) [zoomed]`;
-            callbacks.onLog({
-              step,
-              action: 'click',
-              detail: actionDetail,
-              success: true,
-              zoom: { x: action.x, y: action.y },
-            });
-          } else {
-            const abs = relativeToAbsolute(action.x, action.y, screenInfo);
-            callbacks.onStateChange('executing');
-            executor.click(abs.x, abs.y, action.button);
-            actionDetail = `Click (${action.x.toFixed(3)}, ${action.y.toFixed(3)}) → (${abs.x}, ${abs.y}) [zoom fallback]`;
-            callbacks.onLog({
-              step,
-              action: 'click',
-              detail: actionDetail,
-              success: true,
-            });
-          }
-        } catch (err) {
-          const abs = relativeToAbsolute(action.x, action.y, screenInfo);
-          callbacks.onStateChange('executing');
-          executor.click(abs.x, abs.y, action.button);
-          actionDetail = `Click (${action.x.toFixed(3)}, ${action.y.toFixed(3)}) → (${abs.x}, ${abs.y}) [zoom error: ${err}]`;
-          callbacks.onLog({
-            step,
-            action: 'click',
-            detail: actionDetail,
-            success: true,
-          });
-        }
-      } else if (action.type === 'click') {
+      if (action.type === 'click') {
         const abs = relativeToAbsolute(action.x, action.y, screenInfo);
         callbacks.onStateChange('executing');
         executor.click(abs.x, abs.y, action.button);
@@ -492,17 +495,18 @@ export class Agent {
         });
       }
 
-      // Record GUI action result as a ToolMessage (with zoom image if available)
+      // Record GUI action result as a ToolMessage
       this.memory.addToolResult(
         toolCallId,
         toolName,
         `${actionDetail}. Action executed. Call "screenshot" to verify the result, or continue.`,
-        actionImageBase64,
       );
       await sleep(this.config.actionDelay);
     }
 
-    callbacks.onStateChange('done');
-    callbacks.onComplete(`Reached max steps (${this.config.maxSteps})`);
+    if (!this.aborted) {
+      callbacks.onStateChange('done');
+      callbacks.onComplete(`Reached max steps (${this.config.maxSteps})`);
+    }
   }
 }

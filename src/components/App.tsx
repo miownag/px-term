@@ -93,16 +93,19 @@ export function App({ config }: AppProps) {
           },
         });
       } catch (err) {
-        setAgentState('error');
-        setLogs((prev) => [
-          ...prev,
-          {
-            step: 0,
-            action: 'error',
-            detail: String(err),
-            success: false,
-          },
-        ]);
+        // Don't override state if agent was aborted via Ctrl+C
+        if (agentRef.current) {
+          setAgentState('error');
+          setLogs((prev) => [
+            ...prev,
+            {
+              step: 0,
+              action: 'error',
+              detail: String(err),
+              success: false,
+            },
+          ]);
+        }
       }
     },
     [agentState, config],
@@ -116,11 +119,33 @@ export function App({ config }: AppProps) {
     }
   }, []);
 
-  // Ctrl+C to abort
+  // Ctrl+C: if running, abort agent and reset UI; otherwise exit process
   useInput((_input, key) => {
     if (key.ctrl && _input === 'c') {
-      if (agentRef.current) agentRef.current.abort();
-      exit();
+      if (isRunning) {
+        if (agentRef.current) {
+          agentRef.current.abort();
+          agentRef.current = null;
+        }
+        // Resolve any pending question so the agent loop can exit
+        if (questionResolverRef.current) {
+          questionResolverRef.current('');
+          questionResolverRef.current = null;
+          setQuestion(null);
+        }
+        setAgentState('idle');
+        setLogs((prev) => [
+          ...prev,
+          {
+            step: 0,
+            action: 'abort',
+            detail: 'Aborted by user (Ctrl+C)',
+            success: false,
+          },
+        ]);
+      } else {
+        exit();
+      }
     }
   });
 

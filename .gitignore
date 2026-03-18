@@ -9,6 +9,9 @@ dist/
 storybook-static
 doc_build/
 
+# Debug images
+img/
+
 # IDE
 .vscode/*
 !.vscode/extensions.json

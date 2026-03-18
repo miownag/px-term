@@ -16,5 +16,6 @@ export function loadConfig(): AppConfig {
     zoomEnabled: process.env.ZOOM_ENABLED !== 'false',
     zoomPadding: parseInt(process.env.ZOOM_PADDING || '150', 10),
     maxHistoryTurns: parseInt(process.env.MAX_HISTORY_TURNS || '10', 10),
+    maxTokens: parseInt(process.env.MAX_TOKENS || '4096', 10),
   };
 }

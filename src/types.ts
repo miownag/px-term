@@ -44,13 +44,21 @@ export interface ScreenshotAction {
   type: 'screenshot';
 }
 
+export interface ZoomCaptureAction {
+  type: 'zoomin_capture';
+  x: number;
+  y: number;
+  padding?: number;
+}
+
 export type AgentAction =
   | ClickAction
   | TypeAction
   | ScrollAction
   | AskQuestionAction
   | DoneAction
-  | ScreenshotAction;
+  | ScreenshotAction
+  | ZoomCaptureAction;
 
 export interface ScreenInfo {
   physicalWidth: number;
@@ -99,6 +107,7 @@ export interface AppConfig {
   zoomEnabled: boolean;
   zoomPadding: number;
   maxHistoryTurns: number;
+  maxTokens: number;
 }
 
 export interface AgentCallbacks {

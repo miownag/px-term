@@ -81,8 +81,36 @@ export const screenshotTool = tool(
   },
 );
 
+export const zoominCaptureTool = tool(
+  (input) => JSON.stringify({ type: 'zoomin_capture', ...input }),
+  {
+    name: 'zoomin_capture',
+    description:
+      'Capture a zoomed-in view of a specific area on the screen. Use this when you need to see fine details (small text, icons, buttons) before acting. The result is an enlarged crop for observation only — all click/type/scroll coordinates still use the full-screen coordinate system.',
+    schema: z.object({
+      x: z
+        .number()
+        .min(0)
+        .max(1)
+        .describe('Relative X coordinate (0-1) of the zoom center'),
+      y: z
+        .number()
+        .min(0)
+        .max(1)
+        .describe('Relative Y coordinate (0-1) of the zoom center'),
+      padding: z
+        .number()
+        .optional()
+        .describe(
+          'Crop padding in logical pixels around the center (default: from config)',
+        ),
+    }),
+  },
+);
+
 export const allTools = [
   screenshotTool,
+  zoominCaptureTool,
   clickTool,
   typeTool,
   scrollTool,
