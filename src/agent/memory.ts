@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { BaseMessage } from '@langchain/core/messages';
+import type { BaseMessage, ContentBlock } from '@langchain/core/messages';
 import {
   AIMessage,
   HumanMessage,
@@ -205,7 +205,7 @@ function buildAiMessageWithReasoning(
   // Build content that prepends reasoning to the original content
   const reasoningPrefix = `<reasoning>\n${reasoningContent}\n</reasoning>\n\n`;
 
-  let newContent: string | Array<Record<string, unknown>>;
+  let newContent: string | ContentBlock[];
 
   if (typeof original.content === 'string') {
     newContent = reasoningPrefix + original.content;
@@ -213,7 +213,7 @@ function buildAiMessageWithReasoning(
     // Prepend a text block with reasoning before original content blocks
     newContent = [
       { type: 'text', text: reasoningPrefix },
-      ...(original.content as Array<Record<string, unknown>>),
+      ...original.content,
     ];
   } else {
     newContent = reasoningPrefix + JSON.stringify(original.content);

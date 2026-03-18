@@ -212,7 +212,7 @@ export class Agent {
     const tools = this.config.zoomEnabled
       ? allTools
       : allTools.filter((t) => t !== zoominCaptureTool);
-    const modelWithTools = model.bindTools!(tools);
+    const modelWithTools = model.bindTools(tools);
 
     // Seed the conversation with the user's task
     this.memory.addHumanStep(`Task: ${task}`);
