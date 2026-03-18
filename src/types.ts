@@ -118,6 +118,7 @@ export interface AgentCallbacks {
   onMessage: (text: string) => void;
   onComplete: (summary: string) => void;
   onError: (error: string) => void;
+  onInterrupt?: () => void;
   onScreenInfo: (info: ScreenInfo) => void;
   onDriverType: (driver: DriverType) => void;
 }

@@ -182,6 +182,10 @@ export class Agent {
     writeFileSync(filePath, Buffer.from(base64, 'base64'));
   }
 
+  resetMemory(): void {
+    this.memory.clear();
+  }
+
   async run(task: string, callbacks: AgentCallbacks): Promise<void> {
     this.aborted = false;
     this.memory.clear();
@@ -219,6 +223,7 @@ export class Agent {
 
     for (let step = 1; step <= this.config.maxSteps; step++) {
       if (this.aborted) {
+        callbacks.onInterrupt?.();
         return;
       }
 

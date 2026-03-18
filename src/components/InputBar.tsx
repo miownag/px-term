@@ -27,7 +27,7 @@ export function InputBar({ onSubmit, disabled }: InputBarProps) {
             value={value}
             onChange={setValue}
             onSubmit={handleSubmit}
-            placeholder="Enter task..."
+            placeholder="Enter task... (type /new to start fresh)"
           />
         </Box>
       )}
