@@ -23,7 +23,8 @@ export function Header({ modelName, screenInfo, driverType }: HeaderProps) {
       </Text>
       {screenInfo && (
         <Text>
-          Screen: {screenInfo.logicalWidth}×{screenInfo.logicalHeight}{' '}
+          Screen: {screenInfo.logicalWidth}×{screenInfo.logicalHeight} Capture:{' '}
+          {screenInfo.captureWidth}×{screenInfo.captureHeight}
           <Text dimColor>(@{screenInfo.scaleFactor}x)</Text>
         </Text>
       )}

@@ -61,8 +61,9 @@ export type AgentAction =
   | ZoomCaptureAction;
 
 export interface ScreenInfo {
-  physicalWidth: number;
-  physicalHeight: number;
+  /** Screenshot (backing store) resolution — always 2× logical on Retina Macs */
+  captureWidth: number;
+  captureHeight: number;
   logicalWidth: number;
   logicalHeight: number;
   scaleFactor: number;

@@ -1,20 +1,20 @@
-import { Box, Text, useApp, useInput } from "ink";
-import { useCallback, useRef, useState } from "react";
-import { Agent } from "../agent/agent.js";
-import useFullHeight from "../hooks/use-full-height.js";
-import useResponsiveWidth from "../hooks/use-width.js";
+import { Box, Text, useApp, useInput } from 'ink';
+import { useCallback, useRef, useState } from 'react';
+import { Agent } from '../agent/agent.js';
+import useFullHeight from '../hooks/use-full-height.js';
+import useResponsiveWidth from '../hooks/use-width.js';
 import type {
   AgentState,
   AppConfig,
   DriverType,
   LogEntry,
   ScreenInfo,
-} from "../types.js";
-import { Header } from "./Header.js";
-import { InputBar } from "./InputBar.js";
-import { LogPanel } from "./LogPanel.js";
-import { QuestionPanel } from "./QuestionPanel.js";
-import { TaskPanel } from "./TaskPanel.js";
+} from '../types.js';
+import { Header } from './Header.js';
+import { InputBar } from './InputBar.js';
+import { LogPanel } from './LogPanel.js';
+import { QuestionPanel } from './QuestionPanel.js';
+import { TaskPanel } from './TaskPanel.js';
 
 interface AppProps {
   config: AppConfig;
@@ -26,7 +26,7 @@ export function App({ config }: AppProps) {
   const responsiveWidth = useResponsiveWidth();
   const rows = useFullHeight();
 
-  const [agentState, setAgentState] = useState<AgentState>("idle");
+  const [agentState, setAgentState] = useState<AgentState>('idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [currentTask, setCurrentTask] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -42,24 +42,24 @@ export function App({ config }: AppProps) {
   const questionResolverRef = useRef<((answer: string) => void) | null>(null);
   const lastCtrlCRef = useRef<number>(0);
 
-  const modelName = config.anthropicModel || config.openaiModel || "unknown";
+  const modelName = config.anthropicModel || config.openaiModel || 'unknown';
 
   const handleSubmit = useCallback(
     async (input: string) => {
       // Handle /new command — clear context and start a fresh session
-      if (input.trim() === "/new") {
+      if (input.trim() === '/new') {
         agentRef.current?.abort();
         agentRef.current = null;
         setCurrentTask(null);
         setCurrentStep(0);
-        setAgentState("idle");
+        setAgentState('idle');
         setQuestion(null);
         questionResolverRef.current = null;
         setLogs([
           {
             step: 0,
-            action: "system",
-            detail: "New session started",
+            action: 'system',
+            detail: 'New session started',
             success: true,
           },
         ]);
@@ -67,9 +67,9 @@ export function App({ config }: AppProps) {
       }
 
       if (
-        agentState !== "idle" &&
-        agentState !== "done" &&
-        agentState !== "error"
+        agentState !== 'idle' &&
+        agentState !== 'done' &&
+        agentState !== 'error'
       ) {
         return;
       }
@@ -77,7 +77,7 @@ export function App({ config }: AppProps) {
       setCurrentTask(input);
       setLogs([]);
       setCurrentStep(0);
-      setAgentState("thinking");
+      setAgentState('thinking');
 
       const agent = new Agent(config);
       agentRef.current = agent;
@@ -99,15 +99,15 @@ export function App({ config }: AppProps) {
             // Message is displayed via onLog with action='message'
           },
           onComplete: (_summary) => {
-            setAgentState("done");
+            setAgentState('done');
           },
           onError: (err) => {
-            setAgentState("error");
+            setAgentState('error');
             setLogs((prev) => [
               ...prev,
               {
                 step: 0,
-                action: "error",
+                action: 'error',
                 detail: err,
                 success: false,
               },
@@ -121,12 +121,12 @@ export function App({ config }: AppProps) {
       } catch (err) {
         // Don't override state if agent was aborted via Ctrl+C
         if (agentRef.current) {
-          setAgentState("error");
+          setAgentState('error');
           setLogs((prev) => [
             ...prev,
             {
               step: 0,
-              action: "error",
+              action: 'error',
               detail: String(err),
               success: false,
             },
@@ -147,7 +147,7 @@ export function App({ config }: AppProps) {
 
   // Ctrl+C: if running, abort agent and reset UI; otherwise exit process
   useInput((_input, key) => {
-    if (key.ctrl && _input === "c") {
+    if (key.ctrl && _input === 'c') {
       if (isRunning) {
         if (agentRef.current) {
           agentRef.current.abort();
@@ -155,17 +155,17 @@ export function App({ config }: AppProps) {
         }
         // Resolve any pending question so the agent loop can exit
         if (questionResolverRef.current) {
-          questionResolverRef.current("");
+          questionResolverRef.current('');
           questionResolverRef.current = null;
           setQuestion(null);
         }
-        setAgentState("idle");
+        setAgentState('idle');
         setLogs((prev) => [
           ...prev,
           {
             step: 0,
-            action: "abort",
-            detail: "Aborted by user (Ctrl+C)",
+            action: 'abort',
+            detail: 'Aborted by user (Ctrl+C)',
             success: false,
           },
         ]);
@@ -176,29 +176,29 @@ export function App({ config }: AppProps) {
   });
 
   const isRunning =
-    agentState !== "idle" && agentState !== "done" && agentState !== "error";
+    agentState !== 'idle' && agentState !== 'done' && agentState !== 'error';
 
   // Ctrl+C: interrupt agent (keep app alive) or double-press to exit
   useInput((_input, key) => {
-    if (key.ctrl && _input === "c") {
+    if (key.ctrl && _input === 'c') {
       const now = Date.now();
 
       if (isRunning) {
         // Interrupt the agent but keep the app and conversation context alive
         agentRef.current?.abort();
-        setAgentState("idle");
+        setAgentState('idle');
         setLogs((prev) => [
           ...prev,
           {
             step: 0,
-            action: "interrupted",
-            detail: "Interrupted by user (Ctrl+C)",
+            action: 'interrupted',
+            detail: 'Interrupted by user (Ctrl+C)',
             success: false,
           },
         ]);
         // Unblock any pending question so the Promise resolves
         if (questionResolverRef.current) {
-          questionResolverRef.current("");
+          questionResolverRef.current('');
           questionResolverRef.current = null;
           setQuestion(null);
         }

@@ -12,14 +12,13 @@ export async function detectScreenInfo(
   const sharp = (await import('sharp')).default;
   const buf = await captureScreen();
   const meta = await sharp(buf).metadata();
-  const physicalWidth = meta.width;
-  const physicalHeight = meta.height;
+  const captureWidth = meta.width;
+  const captureHeight = meta.height;
   const logical = getLogicalSize();
-  const scaleFactor = physicalWidth / logical.width;
-
+  const scaleFactor = captureWidth / logical.width;
   return {
-    physicalWidth,
-    physicalHeight,
+    captureWidth,
+    captureHeight,
     logicalWidth: logical.width,
     logicalHeight: logical.height,
     scaleFactor,

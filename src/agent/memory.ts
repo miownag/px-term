@@ -211,10 +211,7 @@ function buildAiMessageWithReasoning(
     newContent = reasoningPrefix + original.content;
   } else if (Array.isArray(original.content)) {
     // Prepend a text block with reasoning before original content blocks
-    newContent = [
-      { type: 'text', text: reasoningPrefix },
-      ...original.content,
-    ];
+    newContent = [{ type: 'text', text: reasoningPrefix }, ...original.content];
   } else {
     newContent = reasoningPrefix + JSON.stringify(original.content);
   }

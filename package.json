@@ -32,7 +32,6 @@
     "px-term": "./dist/index.js"
   },
   "dependencies": {
-    "@hurdlegroup/robotjs": "^0.12.3",
     "@langchain/anthropic": "^1.3.22",
     "@langchain/core": "^1.1.31",
     "@langchain/openai": "^1.2.12",
@@ -43,6 +42,7 @@
     "ink-text-input": "^6.0.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "robotjs": "^0.7.0",
     "screenshot-desktop": "^1.15.3",
     "sharp": "^0.34.5",
     "zod": "^4.3.6"

@@ -8,7 +8,7 @@ export default defineConfig({
     target: 'node',
     externals: [
       'sharp',
-      '@hurdlegroup/robotjs',
+      'robotjs',
       'screenshot-desktop',
       'ink',
       'react',

@@ -11,7 +11,7 @@ interface Executor {
 
 function createRobotjsExecutor(): Executor {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const robot = require('@hurdlegroup/robotjs');
+  const robot = require('robotjs');
 
   return {
     driverType: 'robotjs',

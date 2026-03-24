@@ -26,9 +26,9 @@ PxTerm — a VLM-powered GUI Desktop Agent that runs in the terminal. Users type
 Three layers, each in its own `src/` subdirectory:
 
 ### `system/` — OS-level capabilities (macOS)
-- **screenshot.ts**: Screen capture via `screenshot-desktop`, screen info detection (physical/logical size, scale factor via sharp metadata + robotjs/cliclick)
+- **screenshot.ts**: Screen capture via `screenshot-desktop`, screen info detection (captured/logical size, scale factor via sharp metadata + robotjs/cliclick)
 - **image.ts**: Image processing pipeline — resize to logical resolution, cap at `maxImageDimension`, overlay red grid (10×8) as SVG composite, JPEG compress. Also handles ZoomClick: crop around a coordinate, enlarge, and map zoom-relative coords back to full screen
-- **executor.ts**: Keyboard/mouse driver — tries `@hurdlegroup/robotjs` first, falls back to `cliclick` CLI. Chinese/non-ASCII text always goes through `pbcopy` + Cmd+V
+- **executor.ts**: Keyboard/mouse driver — tries `robotjs` first, falls back to `cliclick` CLI. Chinese/non-ASCII text always goes through `pbcopy` + Cmd+V
 
 ### `agent/` — VLM interaction and control loop
 - **vlm.ts**: Factory that creates `ChatOpenAI` or `ChatAnthropic` based on config (env vars). Both bound with tools via `bindTools()`
